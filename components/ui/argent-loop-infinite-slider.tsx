@@ -3,143 +3,46 @@
 import * as React from "react";
 import "./argent-loop-infinite-slider.css";
 
-interface CareMode {
-  title: string;
-  image: string;
-  category: string;
-  format: string;
-  description: string;
-}
+interface CareMode { title: string; image: string; category: string; format: string; description: string; }
 
 const CARE_MODES: CareMode[] = [
-  {
-    title: "Psicoterapia individual",
-    image: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1400&q=85",
-    category: "Um espaço só seu",
-    format: "Online ou presencial",
-    description: "Para olhar com mais clareza para sentimentos, relações e escolhas que pedem atenção.",
-  },
-  {
-    title: "Ansiedade e autocobrança",
-    image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=1400&q=85",
-    category: "Ritmos que cansam",
-    format: "Psicoterapia individual",
-    description: "Quando a mente não desliga, a terapia pode ajudar a reconhecer gatilhos e encontrar outras formas de atravessar o dia.",
-  },
-  {
-    title: "Relacionamentos",
-    image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1400&q=85",
-    category: "Vínculos em movimento",
-    format: "Individual ou casal",
-    description: "Conversas para compreender padrões, conflitos e o que cada relação desperta em você.",
-  },
-  {
-    title: "Lutos e transições",
-    image: "https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1400&q=85",
-    category: "Quando a vida muda",
-    format: "Psicoterapia individual",
-    description: "Mudanças, despedidas e novos começos merecem tempo, linguagem e companhia qualificada.",
-  },
-  {
-    title: "Atendimento online",
-    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=85",
-    category: "Cuidado onde você estiver",
-    format: "Por videochamada",
-    description: "A mesma escuta clínica em um formato que se encaixa melhor na sua rotina e no seu lugar.",
-  },
+  { title: "Psicoterapia individual", image: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1400&q=85", category: "Um espaço só seu", format: "Online ou presencial", description: "Para olhar com mais clareza para sentimentos, relações e escolhas que pedem atenção." },
+  { title: "Ansiedade e autocobrança", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=1400&q=85", category: "Ritmos que cansam", format: "Psicoterapia individual", description: "Quando a mente não desliga, a terapia pode ajudar a reconhecer gatilhos e encontrar outras formas de atravessar o dia." },
+  { title: "Relacionamentos", image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1400&q=85", category: "Vínculos em movimento", format: "Individual ou casal", description: "Conversas para compreender padrões, conflitos e o que cada relação desperta em você." },
+  { title: "Lutos e transições", image: "https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1400&q=85", category: "Quando a vida muda", format: "Psicoterapia individual", description: "Mudanças, despedidas e novos começos merecem tempo, linguagem e companhia qualificada." },
+  { title: "Atendimento online", image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=85", category: "Cuidado onde você estiver", format: "Por videochamada", description: "A mesma escuta clínica em um formato que se encaixa melhor na sua rotina e no seu lugar." },
 ];
 
-const CONFIG = { scrollSpeed: 0.72, lerpFactor: 0.075, bufferSize: 3, maxVelocity: 120, snapDuration: 420 };
-const lerp = (start: number, end: number, factor: number) => start + (end - start) * factor;
-const dataAt = (index: number) => CARE_MODES[((index % CARE_MODES.length) + CARE_MODES.length) % CARE_MODES.length];
-const numberAt = (index: number) => String(((index % CARE_MODES.length) + CARE_MODES.length) % CARE_MODES.length + 1).padStart(2, "0");
-
 export function ArgentLoopInfiniteSlider() {
-  const [range, setRange] = React.useState({ min: -CONFIG.bufferSize, max: CONFIG.bufferSize });
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const requestRef = React.useRef<number>(0);
-  const renderedRange = React.useRef(range);
-  const projectsRef = React.useRef(new Map<number, HTMLElement>());
-  const infoRef = React.useRef(new Map<number, HTMLElement>());
-  const state = React.useRef({ currentY: 0, targetY: 0, height: 620, dragging: false, lastInput: 0, touchY: 0, touchStart: 0 });
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const touchStartX = React.useRef<number | null>(null);
+  const item = CARE_MODES[activeIndex];
+  const move = (direction: number) => setActiveIndex((index) => Math.max(0, Math.min(CARE_MODES.length - 1, index + direction)));
 
-  React.useEffect(() => {
-    const resize = () => { state.current.height = containerRef.current?.clientHeight || 620; };
-    const wheel = (event: WheelEvent) => {
-      event.preventDefault();
-      const current = state.current;
-      current.targetY -= Math.max(Math.min(event.deltaY * CONFIG.scrollSpeed, CONFIG.maxVelocity), -CONFIG.maxVelocity);
-      current.lastInput = Date.now();
-    };
-    const update = () => {
-      const current = state.current;
-      current.currentY = lerp(current.currentY, current.targetY, CONFIG.lerpFactor);
-      projectsRef.current.forEach((element, index) => {
-        const y = index * current.height + current.currentY;
-        element.style.transform = `translateY(${y}px)`;
-        const image = element.querySelector("img");
-        if (image instanceof HTMLImageElement) image.style.transform = `translateY(${(-current.currentY - index * current.height) * 0.1}px) scale(1.08)`;
-      });
-      infoRef.current.forEach((element, index) => { element.style.transform = `translateY(${index * current.height + current.currentY}px)`; });
-      const active = Math.round(-current.targetY / current.height);
-      const nextRange = { min: active - CONFIG.bufferSize, max: active + CONFIG.bufferSize };
-      if (nextRange.min !== renderedRange.current.min || nextRange.max !== renderedRange.current.max) { renderedRange.current = nextRange; setRange(nextRange); }
-      if (!current.dragging && Date.now() - current.lastInput > 140) current.targetY = lerp(current.targetY, -active * current.height, 0.14);
-      requestRef.current = requestAnimationFrame(update);
-    };
-    resize();
-    window.addEventListener("resize", resize);
-    const slider = containerRef.current;
-    slider?.addEventListener("wheel", wheel, { passive: false });
-    requestRef.current = requestAnimationFrame(update);
-    return () => { window.removeEventListener("resize", resize); slider?.removeEventListener("wheel", wheel); cancelAnimationFrame(requestRef.current); };
-  }, []);
-
-  const move = (direction: number) => {
-    const current = state.current;
-    const active = Math.round(-current.targetY / current.height);
-    current.targetY = -(active + direction) * current.height;
-    current.lastInput = Date.now();
+  const onKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === "ArrowLeft") { event.preventDefault(); move(-1); }
+    if (event.key === "ArrowRight") { event.preventDefault(); move(1); }
   };
-  const touchStart = (event: React.TouchEvent) => { const current = state.current; current.dragging = true; current.touchY = event.touches[0].clientY; current.touchStart = current.targetY; };
-  const touchMove = (event: React.TouchEvent) => { const current = state.current; if (!current.dragging) return; current.targetY = current.touchStart + (event.touches[0].clientY - current.touchY) * 1.25; current.lastInput = Date.now(); };
-  const touchEnd = () => { state.current.dragging = false; state.current.lastInput = Date.now(); };
-  const indices = Array.from({ length: range.max - range.min + 1 }, (_, offset) => range.min + offset);
-
-  const keyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") { event.preventDefault(); move(1); }
-    if (event.key === "ArrowUp" || event.key === "ArrowLeft") { event.preventDefault(); move(-1); }
+  const onTouchStart = (event: React.TouchEvent) => { touchStartX.current = event.touches[0].clientX; };
+  const onTouchEnd = (event: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const distance = event.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(distance) > 44) move(distance > 0 ? -1 : 1);
+    touchStartX.current = null;
   };
 
   return (
-    <div className="argent-slider" ref={containerRef} tabIndex={0} onKeyDown={keyDown} onTouchStart={touchStart} onTouchMove={touchMove} onTouchEnd={touchEnd} aria-label="Modalidades de atendimento, role ou deslize para explorar">
-      <div className="argent-slider__hint">role para explorar <span>↓</span></div>
-      <div className="argent-slider__stage">
-        {indices.map((index) => {
-          const item = dataAt(index);
-          return <article className="argent-slider__project" key={index} ref={(element) => { if (element) projectsRef.current.set(index, element); else projectsRef.current.delete(index); }}>
-            <img src={item.image} alt="" />
-            <div className="argent-slider__veil" />
-          </article>;
-        })}
+    <section className="argent-slider" tabIndex={0} onKeyDown={onKeyDown} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} aria-roledescription="carrossel" aria-label="Modalidades de atendimento">
+      <div className="argent-slider__stage"><img key={item.image} src={item.image} alt="" /><div className="argent-slider__veil" /></div>
+      <div className="argent-slider__details" aria-live="polite"><div className="argent-slider__detail" key={item.title}>
+        <p className="argent-slider__number">{String(activeIndex + 1).padStart(2, "0")} <span>/ {String(CARE_MODES.length).padStart(2, "0")}</span></p>
+        <p className="argent-slider__category">{item.category}</p><h3>{item.title}</h3><p className="argent-slider__description">{item.description}</p><p className="argent-slider__format">{item.format}</p>
+      </div></div>
+      <div className="argent-slider__navigation" aria-label="Navegação das modalidades">
+        <button type="button" onClick={() => move(-1)} disabled={activeIndex === 0} aria-label="Ver modalidade anterior">Anterior</button>
+        <div className="argent-slider__dots" aria-hidden="true">{CARE_MODES.map((mode, index) => <span className={index === activeIndex ? "is-active" : ""} key={mode.title} />)}</div>
+        <button type="button" onClick={() => move(1)} disabled={activeIndex === CARE_MODES.length - 1} aria-label="Ver próxima modalidade">Próxima</button>
       </div>
-      <div className="argent-slider__details" aria-live="polite">
-        {indices.map((index) => {
-          const item = dataAt(index);
-          return <div className="argent-slider__detail" key={index} ref={(element) => { if (element) infoRef.current.set(index, element); else infoRef.current.delete(index); }}>
-            <p className="argent-slider__number">{numberAt(index)}</p>
-            <p className="argent-slider__category">{item.category}</p>
-            <h3>{item.title}</h3>
-            <p className="argent-slider__format">{item.format}</p>
-            <p className="argent-slider__description">{item.description}</p>
-          </div>;
-        })}
-      </div>
-      <div className="argent-slider__rail" aria-hidden="true"><span /></div>
-      <div className="argent-slider__controls">
-        <button type="button" onClick={() => move(-1)} aria-label="Ver modalidade anterior">↑</button>
-        <button type="button" onClick={() => move(1)} aria-label="Ver próxima modalidade">↓</button>
-      </div>
-    </div>
+    </section>
   );
 }
