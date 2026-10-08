@@ -2,8 +2,8 @@
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Entrelinhas | Psicologia com escuta e presença",
-  description: "Psicoterapia online e presencial com escuta atenta e acolhedora. Um espaço para compreender o que você sente e começar no seu tempo.",
+  title: "Entrelinhas Psicologia | Escuta no seu tempo",
+  description: "Psicoterapia online e presencial com escuta atenta, respeito à sua história e um processo construído com você.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -251,6 +251,10 @@ export type WavingPortfolioLandingProps = {
   ink?: string
   /** Play the cinematic intro on mount. */
   intro?: boolean
+  /** Shift the character in the poster coordinate system. */
+  characterOffset?: number
+  /** Notify the containing scene when the character waves. */
+  onWaveChange?: (isWaving: boolean) => void
   height?: string
   className?: string
 }
@@ -271,6 +275,8 @@ export default function WavingPortfolioLanding({
   paper = "#f6f4f0",
   ink = "#141414",
   intro = true,
+  characterOffset = 0,
+  onWaveChange,
   height = "100svh",
   className = "",
 }: WavingPortfolioLandingProps) {
@@ -292,6 +298,7 @@ export default function WavingPortfolioLanding({
   const [diceSpin, setDiceSpin] = React.useState<[number, number]>([0, 0])
   const [bursts, setBursts] = React.useState<Burst[]>([])
   const [compact, setCompact] = React.useState(false)
+  const [rootSize, setRootSize] = React.useState({ width: 0, height: 0 })
 
   const later = (fn: () => void, ms: number) => {
     const id = window.setTimeout(fn, ms)
@@ -316,7 +323,10 @@ export default function WavingPortfolioLanding({
     if (!el || typeof ResizeObserver === "undefined") return
     const ro = new ResizeObserver(([e]) => {
       const { width, height: h } = e.contentRect
-      if (width && h) setCompact(width / h < 0.9)
+      if (width && h) {
+        setCompact(width / h < 0.9)
+        setRootSize({ width, height: h })
+      }
     })
     ro.observe(el)
     return () => ro.disconnect()
@@ -326,11 +336,13 @@ export default function WavingPortfolioLanding({
     if (wavingRef.current) return
     wavingRef.current = true
     setWaving(true)
+    onWaveChange?.(true)
     later(() => {
       wavingRef.current = false
       setWaving(false)
+      onWaveChange?.(false)
     }, WAVE_MS)
-  }, [])
+  }, [onWaveChange])
 
   const playing = intro && !reduced
   React.useEffect(() => {
@@ -478,7 +490,15 @@ export default function WavingPortfolioLanding({
   const roleRStart = L.width - L.margin - labelWidth(roleR) - 26
   const bubbleW = greeting.length * 19 + 48
   const k = L.charScale
-  const charLeft = L.charX - 205 * k
+  const characterScale = k * 0.72
+  const posterScale = rootSize.width && rootSize.height
+    ? Math.min(rootSize.width / L.width, rootSize.height / L.height)
+    : 1
+  const groundY = rootSize.width && rootSize.height
+    ? L.height - (rootSize.height * 0.11) / posterScale
+    : 600
+  const characterCenter = L.charX + characterOffset * k
+  const charLeft = characterCenter - 205 * characterScale
 
   return (
     <div
@@ -497,7 +517,7 @@ export default function WavingPortfolioLanding({
       </p>
 
       <div className="wpl-stage" key={run}>
-        <svg className="wpl-poster" viewBox={"0 0 " + L.width + " " + L.height} preserveAspectRatio="xMidYMid meet">
+        <svg className="wpl-poster" viewBox={"0 0 " + L.width + " " + L.height} preserveAspectRatio="xMidYMax meet">
           <g className="wpl-par-lines" aria-hidden="true">
             <text className="wpl-label" x={L.margin} y={73}>{nameT}</text>
             <text className="wpl-label" x={L.width - L.margin} y={73} textAnchor="end">{yearT}</text>
@@ -523,7 +543,8 @@ export default function WavingPortfolioLanding({
           </g>
 
           <g className="wpl-par-char">
-            <svg x={charLeft} y={605 - 600 * k} width={460 * k} height={600 * k} viewBox="0 0 460 600" overflow="hidden">
+            <ellipse cx={characterCenter} cy={groundY} rx={79 * characterScale} ry={8 * characterScale} fill={ink} opacity={0.13} aria-hidden="true" />
+            <svg x={charLeft} y={groundY - 640 * characterScale} width={460 * characterScale} height={660 * characterScale} viewBox="0 0 460 660" overflow="visible">
               <g
                 className={"wpl-char" + (waving ? " is-waving" : "")}
                 role="button"

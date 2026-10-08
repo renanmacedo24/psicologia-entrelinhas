@@ -10,3 +10,5 @@ dist/
 Thumbs.db
 Desktop.ini
 /*.png
+
+.vercel
